@@ -8,9 +8,9 @@ function usage()
 	console.log("node csv2xml.js inputFileName numberOfChunks fieldDescriptor root row outputFilePrefix");
 	console.log("inputFileName = the file you want to process.");
 	console.log("numberOfChunks = numeric value indicating the number of output files.");
-	console.log("filedDescriptors = comma separated list of column names, these will be tag names under row");
-	console.log("root - root tag");
-	console.log("row - row tag");
+	console.log("filedDescriptors = a file with the comma separated list of column names, these will be tag names under row");
+	console.log("root = root tag");
+	console.log("row = row tag");
 	console.log("outputFilePrefix - files will be named this + chunk + number.xml");
 	process.argv.forEach(function(val, index, array){console.log(index + " " + val);});
 	process.exit();
@@ -20,7 +20,9 @@ function usage()
 //get filename from options passed in
 var filename = process.argv[2];
 var chunks = process.argv[3];
-var fieldDescriptors = process.argv[4];
+var fieldDescriptors = fs.readFileSync(process.argv[4], "utf-8");
+fieldDescriptors = fieldDescriptors.trim().split(',');
+
 var root = process.argv[5];
 var row = process.argv[6];
 var output = process.argv[7];
@@ -28,15 +30,7 @@ if (output == undefined || row == undefined || root == undefined || filename == 
 {
 	usage();
 }
-console.log("using root:" + root);
-console.log("using row:" + row);
-console.log("using fileds:" + fieldDescriptors);
 
-if (fieldDescriptors != undefined)
-{
-	fieldDescriptors = fieldDescriptors.split(',');
-	
-}
 
 //run wc to get the length
 var child = exec('wc -l ' + filename, function(error, stdout, stderr)
@@ -96,7 +90,7 @@ function CsvToXML(data, chunkNumber, fieldDescriptors)
 	console.log("lines in chunk: " + lines.length);
 	for(var i =0; i<lines.length;i++)
 	{
-		var cols = lines[i].split(',');
+		var cols = lines[i].trim().split(',');
 		if (cols.length == fieldDescriptors.length)
 		{
 			console.log("columns: " + cols.length);
