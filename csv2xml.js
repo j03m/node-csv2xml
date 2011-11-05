@@ -69,7 +69,8 @@ function MyExec(chunk, chunkLen, leftOver, filename, fieldDescriptors)
 
 	var sed = 'sed -n ' + chunkStart + "," + chunkEnd + "p " + filename;
 	console.log(sed);
-	exec(sed, function(error, stdout, stderr){
+	//todo: this should really be spawn. Exec has buffer limits.
+	exec(sed,{maxBuffer: 5000*1024}, function(error, stdout, stderr){
 		if (error!=undefined){
 			console.log("Err: couldn't chunk the files: " + error)
 			process.exit();
