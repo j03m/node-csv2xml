@@ -66,7 +66,7 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, root, row, output)
 		else
 		{
 			exceptions++;
-			console.log("Format Exception: Chunk: " + chunkNumber + " number: " + exception);
+			console.log("Format Exception: Chunk: " + chunkNumber + " number: " + exceptions);
 			console.log("Fields: " + fieldDescriptors.length + " columns in line: " + cols.length);
 			
 			console.log("Detected column length to descriptor mismatch. Line not processed.");			
