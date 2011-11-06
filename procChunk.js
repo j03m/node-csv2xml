@@ -49,9 +49,11 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, root, row, output)
 	var doc = builder.create();
 	var docRoot = doc.begin(root);
  	var lines = data.trim().split('\n');
+	var exceptions = 0;
+	var pattern = /,(?!(?:[^",]|[^"],[^"])+")/;
 	for(var i =0; i<lines.length;i++)
 	{
-		var cols = lines[i].trim().split(',');
+		var cols = lines[i].trim().split(pattern);
 		if (cols.length == fieldDescriptors.length)
 		{
 			var ele = docRoot.ele(row);
@@ -63,7 +65,16 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, root, row, output)
 		}
 		else
 		{
-			console.log("detected column length to descriptor mismatch. Line not processed.")		
+			exceptions++;
+			console.log("detected column length to descriptor mismatch. Line not processed.")			
+			fs.writeFile(output + "_exceptions" + chunkNumber + "_" + exceptions + ".csv", lines[i], function(err){
+				if (err)
+				{
+					console.log("filed to write exception file.")
+				}
+				
+			});
+			
 		}
 	}	
 	
