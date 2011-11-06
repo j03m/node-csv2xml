@@ -30,10 +30,6 @@ if (output == undefined || row == undefined || root == undefined || filename == 
 	usage();
 }
 
-fieldDescriptors = fs.readFileSync(fieldDescriptors, "utf-8");
-fieldDescriptors = fieldDescriptors.trim().split(',');
-
-
 var chunkArray = [];
 chunkArray.length = chunks;
 
@@ -62,70 +58,15 @@ var child = exec('wc -l ' + filename, function(error, stdout, stderr)
 	//loop and use sed chunk out the files and then convert them to XML
 	for(var i =0; i<chunks; i++)
 	{
-		MyExec(i, chunkLen, leftOver, filename, fieldDescriptors);
+		var nodeCom = "node procChunk.js " + i + " " + chunkLen + " " +  leftOver + " " +  filename+ " " +  fieldDescriptors;
+		exec(nodeCom, function(error, stdout, stderr)
+		{
+			if (error!= undefined)
+			{
+				console.log("failed to process chunk:" + error);	
+			}
+		});
 	}
 });
 
 
-function MyExec(chunk, chunkLen, leftOver, filename, fieldDescriptors)
-{
-	var chunkStart = (chunk*chunkLen) + 1;
-	var chunkEnd = chunkStart + chunkLen;
-	var sed = spawn('sed', ['-n', chunkStart + "," + chunkEnd + 'p', filename]);	
-	chunkArray[chunk] = {"proc":sed, "data":""};
-	
-	chunkArray[chunk].proc.on('exit', function(code){
-		if (code!=0)
-		{
-			console.log("chunk failed...");
-		}
-		CsvToXML(chunkArray[chunk].data, chunk, fieldDescriptors);
-	});
-	
-	chunkArray[chunk].proc.stdout.on('data',function(data){
-		chunkArray[chunk].data +=data;
-	});
-	
-	
-	
-	
-}
- 
-function CsvToXML(data, chunkNumber, fieldDescriptors)
-{
-	console.log("INCOMING CHUNK " + chunkNumber + ":")
-	var doc = builder.create();
-	var docRoot = doc.begin(root);
- 	var lines = data.split('\n');
-	console.log("lines in chunk: " + lines.length);
-	for(var i =0; i<lines.length;i++)
-	{
-		var cols = lines[i].trim().split(',');
-		if (cols.length == fieldDescriptors.length)
-		{
-			console.log("columns: " + cols.length);
-			var ele = docRoot.ele(row);
-			for(var ii=0;ii<cols.length;ii++)
-			{
-				//console.log("field:" + fieldDescriptors[ii] + ":" + cols[ii]);
-				ele.ele(fieldDescriptors[ii]).txt(cols[ii]);
-			}	
-		}
-		else
-		{
-			console.log("detected column length to descriptor mismatch. Chunk not processed.")		
-		}
-	}	
-	
-	fs.writeFile(output + "_chunk" + chunkNumber + ".xml", doc.toString({pretty:true}), function(err){
-		if (err!=undefined)
-		{
-			console.log("failed to write chunk: " + chunkNumber + " err: " + err);	
-		}
-		else
-		{
-			console.log("Chunk: " + chunkNumber + " written.");		
-		}
-	});
-	
-}
