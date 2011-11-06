@@ -111,7 +111,7 @@ var child = exec('wc -l ' + filename, function(error, stdout, stderr)
 	}
 	
 	var total = 0;
-	
+	var complete = 0;
 	for(var i=0; i<procLimit; i++)
 	{
 		chunker();	
@@ -127,6 +127,11 @@ var child = exec('wc -l ' + filename, function(error, stdout, stderr)
 			{
 				console.log("failed to process chunk:" + error);	
 			}
+			
+			console.log(stdout);
+			
+			complete++;
+			console.log("Completed: " + complete + " of " + chunks + " chunks.");
 		
 			if (total<chunks)
 			{
@@ -134,7 +139,7 @@ var child = exec('wc -l ' + filename, function(error, stdout, stderr)
 			}			
 		});			
 		total++;
-		
+		console.log("Executed: " + total + " of " + chunks + " chunks.");
 	}
 	
 

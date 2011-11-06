@@ -12,11 +12,12 @@ var fieldDescriptors = process.argv[5];
 var root = process.argv[6];
 var row = process.argv[7];
 var output = process.argv[8];
-console.log("sub provided: " + process.argv);
-
 
 fieldDescriptors = fs.readFileSync(fieldDescriptors, "utf-8");
 fieldDescriptors = fieldDescriptors.trim().split(',');
+var d = new Date();
+var time = d.getMilliseconds();
+
 
 MyExec(chunk, chunklen,filename, fieldDescriptors, root, row, output);
 
@@ -33,6 +34,7 @@ function MyExec(chunk, chunkLen, filename, fieldDescriptors, root, row, output)
 			console.log("chunk failed...");
 		}
 		CsvToXML(chunkObj.data, chunk, fieldDescriptors, root, row, output);
+
 	});
 	
 		chunkObj.proc.stdout.on('data',function(data){
@@ -46,14 +48,12 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, root, row, output)
 	console.log("INCOMING CHUNK " + chunkNumber + ":")
 	var doc = builder.create();
 	var docRoot = doc.begin(root);
- 	var lines = data.split('\n');
-	console.log("lines in chunk: " + lines.length);
+ 	var lines = data.trim().split('\n');
 	for(var i =0; i<lines.length;i++)
 	{
 		var cols = lines[i].trim().split(',');
 		if (cols.length == fieldDescriptors.length)
 		{
-			console.log("columns: " + cols.length);
 			var ele = docRoot.ele(row);
 			for(var ii=0;ii<cols.length;ii++)
 			{
@@ -63,11 +63,15 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, root, row, output)
 		}
 		else
 		{
-			console.log("detected column length to descriptor mismatch. Chunk not processed.")		
+			console.log("detected column length to descriptor mismatch. Line not processed.")		
 		}
 	}	
 	
 	fs.writeFile(output + "_chunk" + chunkNumber + ".xml", doc.toString({pretty:true}), function(err){
+		var d2= new Date();
+		var time2 = d2.getMilliseconds();
+		var diff = time2 - time;
+		console.log("Chunk processed in: " + diff/1000 );
 		if (err!=undefined)
 		{
 			console.log("failed to write chunk: " + chunkNumber + " err: " + err);	
