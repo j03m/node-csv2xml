@@ -1,5 +1,6 @@
 var fs = require('fs');
 var sys = require('util');
+var spawn = require('child_process').spawn;
 var exec = require('child_process').exec;
 var builder = require('xmlbuilder'); 
 
@@ -22,7 +23,6 @@ var filename = process.argv[2];
 var chunks = process.argv[3];
 var fieldDescriptors = fs.readFileSync(process.argv[4], "utf-8");
 fieldDescriptors = fieldDescriptors.trim().split(',');
-
 var root = process.argv[5];
 var row = process.argv[6];
 var output = process.argv[7];
@@ -31,6 +31,8 @@ if (output == undefined || row == undefined || root == undefined || filename == 
 	usage();
 }
 
+var chunkArray = [];
+chunkArray.length = chunks;
 
 //run wc to get the length
 var child = exec('wc -l ' + filename, function(error, stdout, stderr)
@@ -61,24 +63,28 @@ var child = exec('wc -l ' + filename, function(error, stdout, stderr)
 	}
 });
 
+
 function MyExec(chunk, chunkLen, leftOver, filename, fieldDescriptors)
 {
 	var chunkStart = (chunk*chunkLen) + 1;
 	var chunkEnd = chunkStart + chunkLen;
+	var sed = spawn('sed', ['-n', chunkStart + "," + chunkEnd + 'p', filename]);	
+	chunkArray[chunk] = {"proc":sed, "data":""};
 	
-
-	var sed = 'sed -n ' + chunkStart + "," + chunkEnd + "p " + filename;
-	console.log(sed);
-	//todo: this should really be spawn. Exec has buffer limits.
-	exec(sed,{maxBuffer: 5000*1024}, function(error, stdout, stderr){
-		if (error!=undefined){
-			console.log("Err: couldn't chunk the files: " + error)
-			process.exit();
+	chunkArray[chunk].proc.on('exit', function(code){
+		if (code!=0)
+		{
+			console.log("chunk failed...");
 		}
-		
-		CsvToXML(stdout, chunk, fieldDescriptors)
-		
+		CsvToXML(chunkArray[chunk].data, chunk, fieldDescriptors);
 	});
+	
+	chunkArray[chunk].proc.stdout.on('data',function(data){
+		chunkArray[chunk].data +=data;
+	});
+	
+	
+	
 	
 }
  
