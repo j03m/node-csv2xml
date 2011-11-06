@@ -25,6 +25,7 @@ var fieldDescriptors = process.argv[4];
 var root = process.argv[5];
 var row = process.argv[6];
 var output = process.argv[7];
+console.log("provided: " + process.argv);
 if (output == undefined || row == undefined || root == undefined || filename == undefined || chunks == undefined || isNaN(chunks)  || chunks<0 || fieldDescriptors == undefined )
 {
 	usage();
@@ -55,10 +56,10 @@ var child = exec('wc -l ' + filename, function(error, stdout, stderr)
 		leftOver = 0;
 	}
 	
-	//loop and use sed chunk out the files and then convert them to XML
+	//loop and chunk out the files and then convert them to XML
 	for(var i =0; i<chunks; i++)
 	{
-		var nodeCom = "node procChunk.js " + i + " " + chunkLen + " " +  leftOver + " " +  filename+ " " +  fieldDescriptors;
+		var nodeCom = "node procChunk.js " + i + " " + chunkLen + " " +  filename + " " +  fieldDescriptors + " " + root + " " + row + " " + output;
 		exec(nodeCom, function(error, stdout, stderr)
 		{
 			if (error!= undefined)
