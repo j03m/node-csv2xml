@@ -21,8 +21,7 @@ function usage()
 //get filename from options passed in
 var filename = process.argv[2];
 var chunks = process.argv[3];
-var fieldDescriptors = fs.readFileSync(process.argv[4], "utf-8");
-fieldDescriptors = fieldDescriptors.trim().split(',');
+var fieldDescriptors = process.argv[4];
 var root = process.argv[5];
 var row = process.argv[6];
 var output = process.argv[7];
@@ -30,6 +29,10 @@ if (output == undefined || row == undefined || root == undefined || filename == 
 {
 	usage();
 }
+
+fieldDescriptors = fs.readFileSync(fieldDescriptors, "utf-8");
+fieldDescriptors = fieldDescriptors.trim().split(',');
+
 
 var chunkArray = [];
 chunkArray.length = chunks;

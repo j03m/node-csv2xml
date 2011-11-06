@@ -1,1 +1,11 @@
 very simple script for taking a large csv and chunking it down into a few xml files.
+
+Usage:
+node csv2xml.js inputFileName numberOfChunks fieldDescriptor root row outputFilePrefix
+
+inputFileName = the file you want to process.
+numberOfChunks = numeric value indicating the number of output files.
+filedDescriptors = a file with the comma separated list of column names, these will be tag names under row
+root = root xml tag
+row = row xml tag
+outputFilePrefix = files will be named this + _chunk + number.xml
