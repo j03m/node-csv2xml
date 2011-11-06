@@ -3,7 +3,7 @@ var sys = require('util');
 var spawn = require('child_process').spawn;
 var exec = require('child_process').exec;
 var builder = require('xmlbuilder');
-
+var lazy = require('lazy');
 
 var chunk = process.argv[2];
 var chunklen = process.argv[3];
@@ -17,7 +17,8 @@ fieldDescriptors = fs.readFileSync(fieldDescriptors, "utf-8");
 fieldDescriptors = fieldDescriptors.trim().split(',');
 var d = new Date();
 var time = d.getMilliseconds();
-
+var doc = builder.create();
+var docRoot = doc.begin(root);
 
 MyExec(chunk, chunklen,filename, fieldDescriptors, root, row, output);
 
@@ -33,22 +34,36 @@ function MyExec(chunk, chunkLen, filename, fieldDescriptors, root, row, output)
 		{
 			console.log("chunk failed...");
 		}
-		CsvToXML(chunkObj.data, chunk, fieldDescriptors, root, row, output);
+		else
+		{
+			fs.writeFile(output + "_chunk" + chunk + ".xml", doc.toString({pretty:true}), function(err){
+			
+				if (err!=undefined)
+				{
+					console.log("failed to write chunk: " + chunk + " err: " + err);	
+				}
+				else
+				{
+					console.log("Chunk: " + chunk + " written.");		
+				}
+				process.exit();
+			});
+		}
 
 	});
-	
-		chunkObj.proc.stdout.on('data',function(data){
-			chunkObj.data +=data;
+		
+	new lazy(chunkObj.proc.stdout).lines.forEach(function(line)
+	{
+		CsvToXML([line.toString().trim()], chunk, fieldDescriptors, root, row, output);
+		
 	});
-
 }
  
 function CsvToXML(data, chunkNumber, fieldDescriptors, root, row, output)
 {
 	console.log("INCOMING CHUNK " + chunkNumber + ":")
-	var doc = builder.create();
-	var docRoot = doc.begin(root);
- 	var lines = data.trim().split('\n');
+	
+ 	var lines = data;
 	var exceptions = 0;
 	var pattern = /,(?!(?:[^",]|[^"],[^"])+")/;
 	for(var i =0; i<lines.length;i++)
@@ -79,21 +94,6 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, root, row, output)
 			});
 			
 		}
-	}	
-	
-	fs.writeFile(output + "_chunk" + chunkNumber + ".xml", doc.toString({pretty:true}), function(err){
-		var d2= new Date();
-		var time2 = d2.getMilliseconds();
-		var diff = time2 - time;
-		console.log("Chunk processed in: " + diff/1000 );
-		if (err!=undefined)
-		{
-			console.log("failed to write chunk: " + chunkNumber + " err: " + err);	
-		}
-		else
-		{
-			console.log("Chunk: " + chunkNumber + " written.");		
-		}
-	});
+	}
 	
 }
