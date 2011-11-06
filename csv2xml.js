@@ -3,6 +3,8 @@ var sys = require('util');
 var spawn = require('child_process').spawn;
 var exec = require('child_process').exec;
 var builder = require('xmlbuilder'); 
+var CPUs = require('os').cpus().length;
+
 
 function usage()
 {
@@ -13,6 +15,7 @@ function usage()
 	console.log("root = root tag");
 	console.log("row = row tag");
 	console.log("outputFilePrefix - files will be named this + chunk + number.xml");
+	console.log("procLimit - override the number of process this will spin up to chunk the file.");
 	process.argv.forEach(function(val, index, array){console.log(index + " " + val);});
 	process.exit();
 }
@@ -25,6 +28,7 @@ var fieldDescriptors = process.argv[4];
 var root = process.argv[5];
 var row = process.argv[6];
 var output = process.argv[7];
+var procLimit = process.argv[8];
 console.log("provided: " + process.argv);
 if (output == undefined || row == undefined || root == undefined || filename == undefined || chunks == undefined || isNaN(chunks)  || chunks<0 || fieldDescriptors == undefined )
 {
@@ -33,6 +37,16 @@ if (output == undefined || row == undefined || root == undefined || filename == 
 
 var chunkArray = [];
 chunkArray.length = chunks;
+
+if (procLimit == undefined)
+{
+	procLimit = CPUs;
+	console.log("Utilizing " + CPUs + " cores/procs.");
+}
+else
+{
+	console.log("Overriding " +  CPUs + " with " + procLimit + " workers.");
+}
 
 //run wc to get the length
 var child = exec('wc -l ' + filename, function(error, stdout, stderr)
@@ -56,18 +70,36 @@ var child = exec('wc -l ' + filename, function(error, stdout, stderr)
 		leftOver = 0;
 	}
 	
-	//loop and chunk out the files and then convert them to XML
-	for(var i =0; i<chunks; i++)
+	var total = 0;
+	
+	for(var i=0; i<procLimit; i++)
 	{
-		var nodeCom = "node procChunk.js " + i + " " + chunkLen + " " +  filename + " " +  fieldDescriptors + " " + root + " " + row + " " + output;
+		chunker();	
+	}
+	
+	//loop and chunk out the files and then convert them to XML
+	function chunker()
+	{
+		var nodeCom = "node procChunk.js " + total + " " + chunkLen + " " +  filename + " " +  fieldDescriptors + " " + root + " " + row + " " + output;
 		exec(nodeCom, function(error, stdout, stderr)
 		{
 			if (error!= undefined)
 			{
 				console.log("failed to process chunk:" + error);	
 			}
-		});
+		
+			if (total<chunks)
+			{
+				chunker();
+			}			
+		});			
+		total++;
+		
 	}
+	
+
+		
+	
 });
 
 
