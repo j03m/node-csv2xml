@@ -14,9 +14,13 @@ var recordsPerFile = 150000;
 
 var chunk = 0;
 var lineCount = 0;
+var totalExceptions = 0;
 var writeStream = fs.createWriteStream("output_chunk" + chunk + ".xml");
-writeStream.write("<root>", "utf-8");
-var fieldDescriptors = fs.readFileSync(desc, "utf-8");
+writeStream.write("<root>", "ascii");
+
+var exceptionStream = fs.createWriteStream("exceptions.txt", 'ascii');
+
+var fieldDescriptors = fs.readFileSync(desc, "ascii");
 fieldDescriptors = fieldDescriptors.trim().split(',');
 
 MyExec();
@@ -28,7 +32,7 @@ function MyExec()
 
 	stream.on('end', function()
 	{
-		writeStream.write("<\root>", "utf-8");
+		writeStream.write("<\root>", "ascii");
 	});
 	
 	new lazy(stream).lines.forEach(function(line){
@@ -36,15 +40,15 @@ function MyExec()
 		var xml = CsvToXML([line.toString().trim()], chunk, fieldDescriptors,  "output");
 		lineCount++;
 		count++;
-		writeStream.write(xml, "utf-8");
+		writeStream.write(xml, "ascii");
 		if (count>=recordsPerFile)
 		{
 		
-			writeStream.write("</root>", "utf-8");
+			writeStream.write("</root>", "ascii");
 			chunk++;
 			count = 0;
 			writeStream = fs.createWriteStream("output_chunk" + chunk + ".xml");	
-			writeStream.write("<root>", "utf-8");
+			writeStream.write("<root>", "ascii");
 		}
 	});		
 }
@@ -67,26 +71,20 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, output)
 			for(var ii=0;ii<cols.length;ii++)
 			{
 				//console.log("field:" + fieldDescriptors[ii] + ":" + cols[ii]);
-				if (fieldDescriptors[ii]!=undefined)
+				if (fieldDescriptors[ii] != undefined )
 				{
+					if (cols[ii] == ""){
+						cols[ii] = "\t";
+					}
 					root.ele(fieldDescriptors[ii]).txt(cols[ii]);
 				}
 			}	
 		}
 		else
 		{
-			exceptions++;
-			console.log("Format Exception: Chunk: " + chunkNumber + " number: " + exceptions);
-			console.log("Fields: " + fieldDescriptors.length + " columns in line: " + cols.length);
-			
-			console.log("Detected column length to descriptor mismatch. Line not processed.");			
-			fs.writeFile(output + "_exceptions" + lineCount + ".csv", lines[i], function(err){
-				if (err)
-				{
-					console.log("filed to write exception file.")
-				}
-				
-			});
+			totalExceptions++;	
+			console.log("Format Exception line: " + lineCount + " total exceptions so far: " + totalExceptions);			
+			exceptionStream.write(lineCount, 'ascii');
 			
 		}
 	}
