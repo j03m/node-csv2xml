@@ -32,6 +32,7 @@ function MyExec()
 	});
 	
 	new lazy(stream).lines.forEach(function(line){
+		console.log(lineCount);
 		var xml = CsvToXML([line.toString().trim()], chunk, fieldDescriptors,  "output");
 		lineCount++;
 		count++;
