@@ -5,11 +5,13 @@ var exec = require('child_process').exec;
 var builder = require('xmlbuilder');
 var lazy = require('lazy');
 
-var file = "UsBiz.csv";
+var file = "source.csv";
 //var file = "test.txt";
 var desc = "fields.csv";
+var useHeaders = 1;
 //var desc = "descriptor.txt";
 var recordsPerFile = 150000;
+var trimQuotes=1;
 //var recordsPerFile = 100;
 
 var chunk = 0;
@@ -17,11 +19,16 @@ var lineCount = 0;
 var totalExceptions = 0;
 var writeStream = fs.createWriteStream("output_chunk" + chunk + ".xml");
 writeStream.write("<root>", "ascii");
-
+var pattern = /,(?!(?:[^",]|[^"],[^"])+")/;
 var exceptionStream = fs.createWriteStream("exceptions.txt");
 
-var fieldDescriptors = fs.readFileSync(desc, "ascii");
-fieldDescriptors = fieldDescriptors.trim().split(',');
+var fieldDescriptors;
+if (useHeaders==0)
+{
+	fieldDescriptors = fs.readFileSync(desc, "ascii");
+	fieldDescriptors = fieldDescriptors.trim().split(pattern);
+} 
+
 
 MyExec();
 
@@ -37,6 +44,15 @@ function MyExec()
 	
 	new lazy(stream).lines.forEach(function(line){
 		console.log(lineCount);
+		if (useHeaders == 1 && lineCount == 0)
+		{
+			//parse headers
+			fieldDescriptors = line.toString().trim().split(pattern);
+			lineCount++;
+			return;
+		}
+
+
 		var xml = CsvToXML([line.toString().trim()], chunk, fieldDescriptors,  "output");
 		lineCount++;
 		count++;
@@ -57,8 +73,6 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, output)
 {
 	
  	var lines = data;
-	var exceptions = 0;
-	var pattern = /,(?!(?:[^",]|[^"],[^"])+")/;
 	var doc = builder.create();
 
 	
@@ -86,6 +100,10 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, output)
 				{
 					if (cols[ii] == ""){
 						cols[ii] = "\t";
+					}
+					if (trimQuotes == 1)
+					{
+						cols[ii]=cols[ii].replace(/\"/g, "");
 					}
 					root.ele(fieldDescriptors[ii]).txt(cols[ii]);
 				}
