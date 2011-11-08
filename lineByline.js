@@ -16,8 +16,9 @@ var FIXERR = 1; //custom error handling for my file...remove if you don't need.
 var chunk = 0;
 var lineCount = 0;
 var totalExceptions = 0;
-var writeStream = fs.createWriteStream("output_chunk" + chunk + ".xml");
+var writeStream = fs.createWriteStream(pathAndPrefix + chunk + ".xml");
 writeStream.write("<root>", "ascii");
+var pathAndPrefix = "/Volumes/Data/output_chunk"
 var pattern = /,(?!(?:[^",]|[^"],[^"])+")/;
 var exceptionStream = fs.createWriteStream("exceptions.txt");
 
@@ -39,6 +40,8 @@ function MyExec()
 	stream.on('end', function()
 	{
 		writeStream.write("<\root>", "ascii");
+		writeStream.end();
+		writeStream.destroySoon();
 	});
 	
 	new lazy(stream).lines.skip(lineCount*recordsPerFile).forEach(function(line){
@@ -60,9 +63,11 @@ function MyExec()
 		{
 		
 			writeStream.write("</root>", "ascii");
+			writeStream.end();
+			writeStream.destroySoon();
 			chunk++;
 			count = 0;
-			writeStream = fs.createWriteStream("output_chunk" + chunk + ".xml");	
+			writeStream = fs.createWriteStream(pathAndPrefix + chunk + ".xml");	
 			writeStream.write("<root>", "ascii");
 		}
 	});		
