@@ -5,15 +5,14 @@ var exec = require('child_process').exec;
 var builder = require('xmlbuilder');
 var lazy = require('lazy');
 
-var file = "source.csv";
+var file = "UsBiz.csv";
 //var file = "test.txt";
 var desc = "fields.csv";
-var useHeaders = 1;
-//var desc = "descriptor.txt";
+var useHeaders = 0;
 var recordsPerFile = 150000;
 var trimQuotes=1;
-//var recordsPerFile = 100;
-
+var skip = 0;
+var FIXERR = 1; //custom error handling for my file...remove if you don't need.
 var chunk = 0;
 var lineCount = 0;
 var totalExceptions = 0;
@@ -42,7 +41,7 @@ function MyExec()
 		writeStream.write("<\root>", "ascii");
 	});
 	
-	new lazy(stream).lines.forEach(function(line){
+	new lazy(stream).lines.skip(lineCount*recordsPerFile).forEach(function(line){
 		console.log(lineCount);
 		if (useHeaders == 1 && lineCount == 0)
 		{
@@ -68,14 +67,14 @@ function MyExec()
 		}
 	});		
 }
-var FIXERR = 0; //custom error handling for my file...remove if you don't need.
+
 function CsvToXML(data, chunkNumber, fieldDescriptors, output)
 {
 	
  	var lines = data;
 	var doc = builder.create();
 
-	
+	var dupeColhandler = {};	
 	for(var i =0; i<lines.length;i++)
 	{
 		var cols = lines[i].trim().split(pattern);
@@ -89,13 +88,13 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, output)
 			cols.splice(73,1);
 			console.log("New val: " + cols[72]);
 		}
-		
+
 		if (cols.length == fieldDescriptors.length)
 		{
 			var root = doc.begin("row");
 			for(var ii=0;ii<cols.length;ii++)
 			{
-				//console.log("field:" + fieldDescriptors[ii] + ":" + cols[ii]);
+
 				if (fieldDescriptors[ii] != undefined )
 				{
 					if (cols[ii] == ""){
@@ -105,7 +104,17 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, output)
 					{
 						cols[ii]=cols[ii].replace(/\"/g, "");
 					}
-					root.ele(fieldDescriptors[ii]).txt(cols[ii]);
+					
+					var colName = fieldDescriptors[ii];
+					var colNameCheck = colName;
+					var count = 1;
+					while(dupeColhandler[colNameCheck]!=undefined){
+						colNameCheck = colName + count;
+						count++; 
+					}
+					
+					root.ele(colName).txt(cols[ii]);
+					dupeColhandler[colNameCheck] = 1;
 				}
 			}	
 		}
