@@ -44,7 +44,7 @@ function MyExec()
 		writeStream.destroySoon();
 	});
 	
-	new lazy(stream).lines.skip(lineCount*recordsPerFile).forEach(function(line){
+	new lazy(stream).lines.skip(skip*recordsPerFile).forEach(function(line){
 		console.log(lineCount);
 		if (useHeaders == 1 && lineCount == 0)
 		{
