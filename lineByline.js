@@ -16,11 +16,8 @@ var chunk = 0;
 var lineCount = chunk*recordsPerFile;
 var totalExceptions = 0;
 var pathAndPrefix = "temp/output_chunk";
-var writeStream = fs.createWriteStream(pathAndPrefix + chunk + ".xml");
-
-
 var pattern = /,(?!(?:[^",]|[^"],[^"])+")/;
-var exceptionStream = fs.createWriteStream("exceptions.txt");
+var writeStream;
 
 var fieldDescriptors;
 if (useHeaders==0)
@@ -32,24 +29,32 @@ if (useHeaders==0)
 
 var count = 0;
 var stream = fs.createReadStream(file);
-
 stream.on('end', function()
 {
+	console.log("read stream closing.");
 	writeStream.write("</root>", "ascii");
 	writeStream.end();
 	writeStream.destroySoon();
 });
 
-writeStream.on('drain', function(){
-	stream.resume();
-})
+function makeWriteStream()
+{
+		writeStream = fs.createWriteStream(pathAndPrefix + chunk + ".xml");	
+		writeStream.on('drain', function(){
+			console.log("drain");
+			stream.resume();
+
+		});
+		writeStream.write("<root>", "ascii");
+}
+
+makeWriteStream();
 
 var buffer = "";
 
-writeStream.write("<root>", "ascii");
 stream.on('data', function(data){
+	console.log("data");
 	buffer+=data;
-	
     var index = buffer.indexOf('\n');
     while (index > -1) {
       var line = buffer.substring(0, index);
@@ -77,23 +82,18 @@ function parseLine(line)
 		{
 			stream.pause();
 		}
-		xml=null;
+	
 		if (count>=recordsPerFile)
 		{
-		
-			if (!writeStream.write("</root>", "ascii"))
-			{
-				stream.pause();
-			}
+			
+			console.log("cutting file.");
+			writeStream.write("</root>", "ascii");	
 			writeStream.end();
 			writeStream.destroySoon();
 			chunk++;
 			count = 0;
-			writeStream = fs.createWriteStream(pathAndPrefix + chunk + ".xml");	
-			if (!writeStream.write("<root>", "ascii"))
-			{
-				stream.pause();
-			}
+			makeWriteStream();
+			
 		}
 	
 }
