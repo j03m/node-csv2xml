@@ -2,23 +2,23 @@ var fs = require('fs');
 var sys = require('util');
 var spawn = require('child_process').spawn;
 var exec = require('child_process').exec;
-var builder = require('xmlbuilder');
-var lazy = require('lazy');
+
 
 var file = "UsBiz.csv";
-//var file = "test.txt";
+//var file = "source.csv";
 var desc = "fields.csv";
 var useHeaders = 0;
 var recordsPerFile = 150000;
 var trimQuotes=1;
-var skip = 0;
+var stop = -1;
 var FIXERR = 1; //custom error handling for my file...remove if you don't need.
 var chunk = 0;
-var lineCount = 0;
+var lineCount = chunk*recordsPerFile;
 var totalExceptions = 0;
+var pathAndPrefix = "temp/output_chunk";
 var writeStream = fs.createWriteStream(pathAndPrefix + chunk + ".xml");
-writeStream.write("<root>", "ascii");
-var pathAndPrefix = "/Volumes/Data/output_chunk"
+
+
 var pattern = /,(?!(?:[^",]|[^"],[^"])+")/;
 var exceptionStream = fs.createWriteStream("exceptions.txt");
 
@@ -30,53 +30,80 @@ if (useHeaders==0)
 } 
 
 
-MyExec();
+var count = 0;
+var stream = fs.createReadStream(file);
 
-function MyExec()
+stream.on('end', function()
 {
-	var count = 0;
-	var stream = fs.createReadStream(file);
+	writeStream.write("</root>", "ascii");
+	writeStream.end();
+	writeStream.destroySoon();
+});
 
-	stream.on('end', function()
-	{
-		writeStream.write("<\root>", "ascii");
-		writeStream.end();
-		writeStream.destroySoon();
-	});
+writeStream.on('drain', function(){
+	stream.resume();
+})
+
+var buffer = "";
+
+writeStream.write("<root>", "ascii");
+stream.on('data', function(data){
+	buffer+=data;
 	
-	new lazy(stream).lines.skip(skip*recordsPerFile).forEach(function(line){
+    var index = buffer.indexOf('\n');
+    while (index > -1) {
+      var line = buffer.substring(0, index);
+      buffer = buffer.substring(index + 1);
+      parseLine(line);
+      index = buffer.indexOf('\n');
+    }
+});
+	
+function parseLine(line)
+{
 		console.log(lineCount);
 		if (useHeaders == 1 && lineCount == 0)
 		{
 			//parse headers
-			fieldDescriptors = line.toString().trim().split(pattern);
+			fieldDescriptors = line.split(pattern);
 			lineCount++;
 			return;
 		}
-
-
-		var xml = CsvToXML([line.toString().trim()], chunk, fieldDescriptors,  "output");
+		
+		var xml = CsvToXML([line], chunk);
 		lineCount++;
 		count++;
-		writeStream.write(xml, "ascii");
+		if (!writeStream.write(xml, "ascii"))
+		{
+			stream.pause();
+		}
+		xml=null;
 		if (count>=recordsPerFile)
 		{
 		
-			writeStream.write("</root>", "ascii");
+			if (!writeStream.write("</root>", "ascii"))
+			{
+				stream.pause();
+			}
 			writeStream.end();
 			writeStream.destroySoon();
 			chunk++;
 			count = 0;
 			writeStream = fs.createWriteStream(pathAndPrefix + chunk + ".xml");	
-			writeStream.write("<root>", "ascii");
+			if (!writeStream.write("<root>", "ascii"))
+			{
+				stream.pause();
+			}
 		}
-	});		
+	
 }
 
-function CsvToXML(data, chunkNumber, fieldDescriptors, output)
+
+function CsvToXML(data)
 {
 	
  	var lines = data;
+	var builder = require('xmlbuilder');
 	var doc = builder.create();
 
 	var dupeColhandler = {};	
@@ -88,10 +115,10 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, output)
 		if (FIXERR && cols.length == 429)
 		{
 			//colapse fields
-			console.log("Fixing name issue: " + cols[72] + ", " + cols[73] );
+			//console.log("Fixing name issue: " + cols[72] + ", " + cols[73] );
 			cols[72] = cols[72] + ", " + cols[73]; 
 			cols.splice(73,1);
-			console.log("New val: " + cols[72]);
+			//console.log("New val: " + cols[72]);
 		}
 
 		if (cols.length == fieldDescriptors.length)
@@ -113,26 +140,35 @@ function CsvToXML(data, chunkNumber, fieldDescriptors, output)
 					var colName = fieldDescriptors[ii];
 					var colNameCheck = colName;
 					var count = 1;
-					while(dupeColhandler[colNameCheck]!=undefined){
-						colNameCheck = colName + count;
-						count++; 
+					if(dupeColhandler[colName]!=undefined)
+					{
+						while(dupeColhandler[colNameCheck]!=undefined){
+							colNameCheck = colName + count;
+							count++; 
+						}
+						
+						root.ele(colNameCheck).txt(cols[ii]);	
+						dupeColhandler[colNameCheck] = 1;		
+					}
+					else
+					{
+						root.ele(colName).txt(cols[ii]);	
+						dupeColhandler[colName] = 1;
 					}
 					
-					root.ele(colName).txt(cols[ii]);
-					dupeColhandler[colNameCheck] = 1;
+					
 				}
 			}	
 		}
-		else
-		{
-			totalExceptions++;			
-			console.log("Format Exception line: " + lineCount + " total exceptions so far: " + totalExceptions);
-			console.log(fieldDescriptors.length + " " + cols.length);			
-			exceptionStream.write(lineCount, 'ascii');
-			
-		}
+	
 	}
 	
-	return doc.toString({pretty:true});
+	//var ret = "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh";
+	//ret = ret + ret + ret + ret + ret + ret + ret + ret + ret + ret + ret;
+	var ret = doc.toString({pretty:true});
+	doc = null;
+	builder = null;
+	root = null;
+	return ret;
 	
 }
